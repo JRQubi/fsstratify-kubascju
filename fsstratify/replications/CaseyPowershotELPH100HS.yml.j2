@@ -1,0 +1,35 @@
+seed: 0
+write_playbook: yes
+
+file_system:
+  type: fat32
+  formatting_parameters: "" #not specified in paper
+
+volume:
+  type: file
+  keep: yes
+  size: 32GiB #not specified in paper
+
+usage_model:
+  type: CaseyModel
+  parameters:
+    resolutions:
+    #possible Canon PowerShot ELPH 100 HS resolutions:
+    - 4000x2248
+    - 2816x1584
+    - 1920x1080
+    - 640x360
+    - 4000x2664 
+    - 2816x1880
+    - 1600x1064
+    - 640x424
+    - 4000x3000
+    - 2816x2112
+    - 1600x1200 
+    - 640x480
+    - 2992x2992
+    - 2112x2112 
+    - 1200x1200
+    - 480x480
+    max_photo_num: 69 #num photos per series in experiment = 35 = average when choosing up to 69
+    series_num: 1

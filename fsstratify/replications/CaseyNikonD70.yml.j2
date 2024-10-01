@@ -1,0 +1,23 @@
+seed: 0
+write_playbook: yes
+
+file_system:
+  type: fat32
+  formatting_parameters: "" #not specified in paper
+
+volume:
+  type: file
+  keep: yes
+  size: 32GiB #not specified in paper
+
+usage_model:
+  type: CaseyModel
+  parameters:
+    resolutions:
+    #possible Nikon D70 resolutions:
+    - 3008x2000
+    - 2240x1448
+    - 1504x1000
+    max_photo_num: 35 #num photos per series in experiment = 18 = average when choosing up to 35
+    series_num: 2
+    bit_depth: 12

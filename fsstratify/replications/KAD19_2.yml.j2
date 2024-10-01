@@ -1,0 +1,38 @@
+seed: {{ seed }}
+write_playbook: yes
+
+file_system:
+  type: ntfs
+  formatting_parameters: ""
+
+volume:
+  type: file
+  keep: yes
+  size: 64GiB
+
+usage_model:
+  type: KAD
+  parameters:
+    steps: 10000
+    chunk_size: 512
+    size_factors:
+      - size: 8
+        weight: 2
+      - size: 128
+        weight: 1
+      - size: 2048
+        weight: 1
+    operation_factors:
+      write: 10
+      delete: 9
+      increase: 14
+      decrease: 7
+    random_range:
+      min: 1
+      max: 1024
+    write_limit:
+      start: 0.05
+      stop: 0.3
+    delete_limit:
+      start: 0.95
+      stop: 0.7

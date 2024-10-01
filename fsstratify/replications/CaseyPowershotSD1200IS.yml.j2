@@ -1,0 +1,25 @@
+seed: 0
+write_playbook: yes
+
+file_system:
+  type: fat32
+  formatting_parameters: "" #not specified in paper
+
+volume:
+  type: file
+  keep: yes
+  size: 32GiB #not specified in paper
+
+usage_model:
+  type: CaseyModel
+  parameters:
+    resolutions:
+    #possible Canon Powershot SD1200 IS resolutions:
+    - 3648x2736
+    - 2816x2112
+    - 2272x1704
+    - 1600x1200
+    - 640x480
+    - 3648x2048
+    max_photo_num: 73 #num photos per series in experiment = 37 = average when choosing up to 73
+    series_num: 1

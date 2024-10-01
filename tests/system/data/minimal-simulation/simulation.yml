@@ -1,0 +1,19 @@
+---
+seed: 7899083743777693025
+write_playbook: yes
+
+file_system:
+  type: ntfs
+  formatting_parameters: ""
+  # prepopulate_with:
+  #   dataset: PREPOPULATION_DATASET
+
+volume:
+  type: file
+  keep: no
+  size: 8GiB
+
+
+usage_model:
+  type: Playbook
+  parameters:

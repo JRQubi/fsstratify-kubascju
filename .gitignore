@@ -1,0 +1,14 @@
+/.coverage
+/.idea/
+/.tox/
+/.venv/
+/build/
+/dist/
+/venv/
+/fsstratify/fsparsers/linux/fsstratify-image-parser
+/fsstratify.egg-info/
+
+/docs/_build/
+
+__pycache__/
+*.bak

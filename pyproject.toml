@@ -1,0 +1,84 @@
+[project]
+name = "fsstratify"
+authors = [
+    { name = "Fraunhofer FKIE", email = "def@fkie.fraunhofer.de" },
+]
+description = "A framework to generate used file systems"
+license = { text = "MIT" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "attrs",
+    "click",
+    "click_option_group",
+    "dissect.ntfs",
+    "dissect.target",
+    "fallocate; platform_system!='Windows'",
+    "jinja2",
+    "numpy",
+    "pandas",
+    "portion",
+    "pyarrow",
+    "strictyaml",
+    "tqdm",
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+tests = [
+    "py",
+    "pylint",
+    "pytest",
+    "pytest-codestyle",
+    "pytest-cov",
+    "pytest-skip-slow",
+    "pyyaml",
+]
+docs = [
+    "Sphinx",
+    "sphinx-serve",
+    "sphinx_fontawesome",
+    "sphinx_rtd_theme",
+]
+dev = [
+    "black",
+    "fsstratify[tests,docs]"
+]
+all = ["fsstratify[dev,docs,tests]"]
+
+[project.scripts]
+fsstratify = "fsstratify.__main__:cli"
+
+[project.urls]
+homepage = "https://github.com/fkie-cad/fsstratify"
+repository = "https://github.com/fkie-cad/fsstratify"
+documentation = "https://github.com/fkie-cad/fsstratify"
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.setuptools.dynamic]
+version = {attr = "fsstratify.__versions__.__version__"}
+
+[tool.setuptools.package-data]
+"fsstratify.prepopulation_datasets" = ["*.parquet"]
+"fsstratify.replications" = ["*.j2"]
+
+[tool.pytest.ini_options]
+pythonpath = "."
+testpaths = ["tests/unit", "tests/system"]
+
+[tool.coverage.run]
+source = ["fsstratify"]
+omit = ["tests/*"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"

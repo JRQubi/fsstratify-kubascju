@@ -1,0 +1,25 @@
+seed: 0
+write_playbook: yes
+
+file_system:
+  type: fat32
+  formatting_parameters: "" #not specified in paper
+
+volume:
+  type: file
+  keep: yes
+  size: 32GiB #not specified in paper
+
+usage_model:
+  type: CaseyModel
+  parameters:
+    resolutions:
+    #possible Nikon Coolpix S600 resolutions:
+    - 3648x2736
+    - 3072x2304
+    - 3072x1728
+    - 2592x1944
+    - 1024x768
+    - 640x480
+    max_photo_num: 19 #avg num photos per series in experiment = 9.75 = ~10 = average when choosing up to 19
+    series_num: 4
