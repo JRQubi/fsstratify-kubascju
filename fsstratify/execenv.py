@@ -128,6 +128,26 @@ class WindowsEnvironment(ExecutionEnvironment):
         )
 
     @classmethod
+    def only_mount(
+        cls,
+        dev_select_cmd,
+        mnt_path: Path,
+        drive_letter,
+        size,
+        fs_type,
+        formatting_parameters,
+        volume_number
+    ):
+        # mount must happen in same command as formatting
+        run_diskpart_script(
+            dev_select_cmd
+            + f'SELECT VOLUME "{volume_number}"\n'
+            f'ASSIGN MOUNT="{mnt_path}"\n'
+            f"ASSIGN LETTER={drive_letter}\n"
+            "EXIT"
+        )
+
+    @classmethod
     def unmount(cls, mnt_path: Path):
         run_diskpart_script(f'SELECT VOLUME="{mnt_path}"\n' "REMOVE ALL \n" "EXIT")
 
@@ -144,6 +164,7 @@ class WindowsEnvironment(ExecutionEnvironment):
         size = self._config["volume"]["size"]
         fs_type = self._config["file_system"]["type"]
         formatting_parameters = self._config["file_system"]["formatting_parameters"]
+        volume_number = self._config["volume"]["volume_number"]
         self._logger.info(
             f"Formatting and mounting file system at byte offset {self._image.get_fs_offset()}"
         )
@@ -153,12 +174,21 @@ class WindowsEnvironment(ExecutionEnvironment):
             select_cmd = self.__class__._disk_select_cmd(
                 self._config["volume"]["disk_num"]
             )
-        try:
-            WindowsEnvironment.format_and_mount(
-                select_cmd, mnt_path, drive_letter, size, fs_type, formatting_parameters
-            )
-        except CalledProcessError as err:
-            raise SimulationError(f"Unable to format and mount image. {err}") from err
+        if not self._config["volume"]["use_again"]:
+            try:
+                WindowsEnvironment.format_and_mount(
+                    select_cmd, mnt_path, drive_letter, size, fs_type, formatting_parameters
+                )
+            except CalledProcessError as err:
+                raise SimulationError(f"Unable to format and mount image. {err}") from err
+        else:
+            try:
+                WindowsEnvironment.only_mount(
+                    select_cmd, mnt_path, drive_letter, size, fs_type, formatting_parameters,
+                    volume_number
+                )
+            except CalledProcessError as err:
+                raise SimulationError(f"Unable to format and mount image. {err}") from err
         set_simulation_mount_point(self._config["mount_point"])
         yield
         self._logger.info("Unmounting file system")
@@ -243,7 +273,8 @@ class LinuxEnvironment(ExecutionEnvironment):
                 f'Unsupported volume type "{volume_type}" for the Linux execution'
                 " environment."
             )
-        self._format_file_system(self._image.path)
+        if not self._config["volume"]["use_again"]:
+            self._format_file_system(self._image.path)
         self._image.flush()
         self._context_stack.enter_context(self._create_mount_point())
         self._context_stack.enter_context(self._mount_file_system(self._image))
@@ -282,7 +313,7 @@ class LinuxEnvironment(ExecutionEnvironment):
         self._logger.info("Mounting file system")
         filesystem = self._config["file_system"]["type"]
         # mount_options = "loop,dirsync"
-        mount_options = "loop"
+        mount_options = "loop,nodiscard"
         if filesystem in ("fat12", "fat16", "fat32", "ntfs"):
             mount_options = f"{mount_options},uid={os.getuid()}"
         try:

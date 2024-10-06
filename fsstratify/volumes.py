@@ -82,9 +82,10 @@ class FileBasedVolume(Volume, ABC):
             if not self._existing:
                 self._create()
         elif self._existing and not self._force_overwrite:
-            raise VolumeError(
-                f"Volume {self.path} already exists and force_overwrite is not set."
-            )
+            if not self._config["use_again"]:
+                raise VolumeError(
+                    f"Volume {self.path} already exists and force_overwrite is not set."
+                )
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):

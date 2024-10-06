@@ -24,6 +24,7 @@ dependencies = [
     "pyarrow",
     "strictyaml",
     "tqdm",
+    "pywin32; platform_system!='Linux'",
 ]
 dynamic = ["version"]
 

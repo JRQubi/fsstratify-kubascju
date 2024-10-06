@@ -90,6 +90,10 @@ class SimulationVirtualFileSystem:
         """Return the size of the given file in bytes."""
         return self._file_system.get_size_of(path)
 
+    def get_timestamps_for_file(self, path: Path) -> dict[str: str]:
+        """Return the four ntfs-timestamps from standard-information for the given file."""
+        return self._file_system.get_timestamps_for_file(path)
+
     def get_allocated_fragments_for_file(self, path: Path) -> List[Tuple[int, int]]:
         """Return a list of blocks allocated for the given file."""
         return self._file_system.get_allocated_fragments_for_file(path)
@@ -229,6 +233,14 @@ class FileSystemParser:
         self._allocated_areas: list = []
         self._immutable_files: set = set()
 
+    def get_timestamps_for_file(self, path: Path) -> dict[str: str]:
+        """Return the four ntfs-timestamps from standard-information for the given file.
+
+        Args:
+            path: The path to the desired file within the simulation volume.
+        """
+        raise NotImplementedError
+
     def get_allocated_fragments_for_file(
         self, path: Path
     ) -> List[Tuple[int, int]]:  # pragma: no cover
@@ -271,6 +283,36 @@ class NtfsParser(FileSystemParser):
     def __init__(self, volume: Volume):
         super().__init__(volume)
 
+    def get_timestamps_for_file(self, path: Path) -> dict[str: str]:
+        with self._volume.get_filesystem() as fs:
+            ntfs = NTFS(fs)
+            try:
+                record = ntfs.mft.get(str(path))
+                standard_information_attr = record.attributes[16][0]
+                file_name_attr = record.attributes[48][0]
+            except FileNotFoundError:
+                raise
+            if record.is_dir():
+                return []
+            return {
+                "stdInfo-creationTime": str(standard_information_attr.creation_time),
+                "fileName-creationTime": str(file_name_attr.creation_time)
+            }
+            # return {
+            #     "standard_information": {
+            #         "creationTime": str(standard_information_attr.creation_time),
+            #         "modifiedTime": str(standard_information_attr.last_modification_time),
+            #         "mft-modifiedTime": str(standard_information_attr.last_change_time),
+            #         "accessedTime": str(standard_information_attr.last_access_time)
+            #     },
+            #     "file_name": {
+            #         "creationTime": str(file_name_attr.creation_time),
+            #         "modifiedTime": str(file_name_attr.last_modification_time),
+            #         "mft-modifiedTime": str(file_name_attr.last_change_time),
+            #         "accessedTime": str(file_name_attr.last_access_time)
+            #     }
+            # }
+
     def get_allocated_fragments_for_file(self, path: Path) -> List[Tuple[int, int]]:
         with self._volume.get_filesystem() as fs:
             ntfs = NTFS(fs)
@@ -292,7 +334,8 @@ class NtfsParser(FileSystemParser):
                     )
                 ]
             else:
-                cluster_factor = ntfs.cluster_size / FSSTRATIFY_BLOCK_SIZE
+                #cluster_factor = ntfs.cluster_size / FSSTRATIFY_BLOCK_SIZE
+                cluster_factor = 1.0
                 return [
                     (
                         int(run[0] * cluster_factor),

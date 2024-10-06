@@ -27,6 +27,7 @@ class Configuration:
                 "seed": Int(),
                 Optional("write_playbook", default=False): Bool(),
                 Optional("log_level", default="warning"): Str(),
+                Optional("write_timestamps", default=False): Bool(),
                 "file_system": Map(
                     {
                         "type": Str(),
@@ -48,6 +49,8 @@ class Configuration:
                         Optional("win_drive_letter", default="S"): Str(),
                         Optional("disk_num"): Int(),
                         Optional("device"): Str(),
+                        Optional("use_again", default=False): Bool(),
+                        Optional("volume_number", default=""): Str(),
                     }
                 ),
                 "usage_model": Map({"type": Str(), "parameters": Any()}),

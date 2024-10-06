@@ -3,7 +3,7 @@
 import shutil
 from abc import ABC
 from pathlib import Path
-from random import randbytes
+#from random import randbytes
 from typing import Optional
 
 from tqdm import tqdm
@@ -12,9 +12,17 @@ from fsstratify.errors import SimulationError, PlaybookError
 from fsstratify.filesystems import get_path_in_mount_point
 from fsstratify.utils import parse_size_definition, parse_boolean_string
 
+import platform
+import os
+from datetime import datetime
+if platform.system() == "Windows":
+    import win32api
+
+
 _operations_registry: dict = {}
 
-_MAX_CHUNK_SIZE = 2**28 - 1
+#_MAX_CHUNK_SIZE = 2**28 - 1
+_MAX_CHUNK_SIZE = 0
 """This is the maximal size that random.randbytes accepts."""
 
 
@@ -91,31 +99,76 @@ class FileWriteOperation(Operation, ABC):
         self._path = self._normalize_simulation_path(path)
         self._real_path: Optional[Path] = None
         self._write_size = write_size
+        self._filename = self._path.name
 
-    def _write(self, chunk_size: int) -> None:
-        self._write_to_file(chunk_size, "w")
+    def _write(self, chunk_size: int, chunked: bool) -> None:
+        if chunked:
+            self._write_to_file(chunk_size, "w")
+        else:
+            self._write_to_file_unchunked("w")
 
-    def _append(self, chunk_size: int) -> None:
-        self._write_to_file(chunk_size, "a")
+    def _append(self, chunk_size: int, chunked: bool) -> None:
+        if chunked:
+            self._write_to_file(chunk_size, "a")
+        else:
+            self._write_to_file_unchunked("a")
 
     def _write_to_file(self, chunk_size: int, mode: str) -> None:
         self._assert_path_is_valid()
         byte_num_to_add = self._write_size
-        with (
-            self._real_path.open(f"{mode}b") as f,
-            tqdm(
-                total=self._write_size,
-                desc=f"  current operation - {self.playbook_command}",
-                leave=False,
-            ) as pbar,
-        ):
+        position = 0
+        extension = mode if mode == "a" else ""
+        with self._real_path.open(f"{mode}b") as f, tqdm(
+            total=self._write_size,
+            desc=f"  current operation - {self.playbook_command}",
+            leave=False,
+        ) as pbar:
+            bytes_to_write = []
+            counter = 0
+            for i in range(1, byte_num_to_add // 512 + 1):
+                chunk_id = self._filename + '_' + str(i) + extension
+                bytes_to_write.append(chunk_id + "X" * (512 - len(chunk_id)))
+                counter = i
+            if byte_num_to_add % 512 != 0:
+                chunk_id = self._filename + '_' + str(counter + 1) + extension
+                if len(chunk_id) >= byte_num_to_add % 512:
+                    bytes_to_write.append(chunk_id[0:byte_num_to_add % 512])
+                else:
+                    bytes_to_write.append(chunk_id + "X" * (byte_num_to_add % 512 - len(chunk_id)))
+            string_to_write = "".join(bytes_to_write)
             while byte_num_to_add != 0:
                 byte_num_for_step = (
                     chunk_size if (chunk_size <= byte_num_to_add) else byte_num_to_add
                 )
-                f.write(randbytes(byte_num_for_step))
+                string_part_to_write = string_to_write[position:(position + byte_num_for_step)]
+                position += byte_num_for_step
+                f.write(bytes(string_part_to_write, 'utf-8'))
                 byte_num_to_add -= byte_num_for_step
                 pbar.update(byte_num_for_step)
+
+    def _write_to_file_unchunked(self, mode: str) -> None:
+        self._assert_path_is_valid()
+        byte_num_to_add = self._write_size
+        extension = mode if mode == "a" else ""
+        with self._real_path.open(f"{mode}b") as f, tqdm(
+                total=self._write_size,
+                desc=f"  current operation - {self.playbook_command}",
+                leave=False,
+        ) as pbar:
+            bytes_to_write = []
+            for i in range(1, byte_num_to_add // 512 + 1):
+                chunk_id = self._filename + '_' + str(i) + extension
+                bytes_to_write.append(chunk_id + "X" * (512 - len(chunk_id)))
+            if byte_num_to_add % 512 != 0:
+                chunk_id = self._filename + '_' + str(i + 1) + extension
+                if len(chunk_id) >= byte_num_to_add % 512:
+                    bytes_to_write.append(chunk_id[0:byte_num_to_add % 512])
+                else:
+                    bytes_to_write.append(chunk_id + "X" * (byte_num_to_add % 512 - len(chunk_id)))
+            string_to_write = "".join(bytes_to_write)
+            f.write(bytes(string_to_write, 'utf-8'))
+            pbar.update(byte_num_to_add)
+
 
     def _assert_path_is_valid(self) -> None:
         if self._real_path.is_dir():
@@ -387,7 +440,7 @@ class Extend(FileWriteOperation):
         chunk_size = _MAX_CHUNK_SIZE
         if self._chunked:
             chunk_size = self._chunk_size
-        self._append(chunk_size)
+        self._append(chunk_size, self._chunked)
 
     def as_dict(self):
         return {
@@ -473,7 +526,7 @@ class Write(FileWriteOperation):
         chunk_size = _MAX_CHUNK_SIZE
         if self._chunked:
             chunk_size = self._chunk_size
-        self._write(chunk_size)
+        self._write(chunk_size, self._chunked)
 
     def as_dict(self):
         return {
@@ -538,3 +591,53 @@ class Write(FileWriteOperation):
                     f'Invalid playbook line: "{line}". Unknown parameter "{param}.'
                 )
         return cls(**args)
+
+
+class Time(Operation, playbook_command="time"):
+    """Set the System-Time."""
+
+    def __init__(self, time: str):
+        self._time_str = time
+        self._system = platform.system()
+
+    @single_step_progress_bar
+    def execute(self):
+        if self._system == "Windows":
+            self._win_set_time(self._time_str)
+        elif self._system == "Linux":
+            self._linux_set_time(self._time_str)
+        else:
+            raise SimulationError(f"Operating system {self._system} is not supported.")
+
+    @property
+    def target(self):
+        return self._time_str
+
+    def as_dict(self):
+        return {"command": self.playbook_command, "time": self._time_str}
+
+    def as_playbook_line(self):
+        return f"{self.playbook_command} {self._time_str}"
+
+    @classmethod
+    def from_playbook_line(cls, line: str):
+        time_str = line.split()[1]
+        try:
+            date_object = datetime.strptime(time_str, '%Y-%m-%d-%H-%M-%S-%f')
+        except PlaybookError as error:
+            raise ValueError(f"Time parameter is not valid. Details: {error}")
+        else:
+            return cls(time_str)
+
+    def _win_set_time(self, time: str):
+        real_time = datetime.strptime(time, '%Y-%m-%d-%H-%M-%S-%f')
+        day_of_week = real_time.isocalendar()[2]
+        win32api.SetSystemTime(real_time.year, real_time.month, day_of_week,
+                                   real_time.day, real_time.hour, real_time.minute, real_time.second,
+                                   int(real_time.microsecond / 1000))
+
+    def _linux_set_time(self, time: str):
+        time_parts = time.split("-")
+        linux_time_str = "-".join(time_parts[0:3]) + " " + ":".join(time_parts[3:6]) + "." + time_parts[6]
+        #os.system("date -s '%s'" % linux_time_str)
+        os.system("timedatectl set-time '%s'" % linux_time_str)
