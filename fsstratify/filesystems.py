@@ -294,24 +294,24 @@ class NtfsParser(FileSystemParser):
                 raise
             if record.is_dir():
                 return []
-            return {
-                "stdInfo-creationTime": str(standard_information_attr.creation_time),
-                "fileName-creationTime": str(file_name_attr.creation_time)
-            }
             # return {
-            #     "standard_information": {
-            #         "creationTime": str(standard_information_attr.creation_time),
-            #         "modifiedTime": str(standard_information_attr.last_modification_time),
-            #         "mft-modifiedTime": str(standard_information_attr.last_change_time),
-            #         "accessedTime": str(standard_information_attr.last_access_time)
-            #     },
-            #     "file_name": {
-            #         "creationTime": str(file_name_attr.creation_time),
-            #         "modifiedTime": str(file_name_attr.last_modification_time),
-            #         "mft-modifiedTime": str(file_name_attr.last_change_time),
-            #         "accessedTime": str(file_name_attr.last_access_time)
-            #     }
+                # "stdInfo-creationTime": str(standard_information_attr.creation_time),
+                # "fileName-creationTime": str(file_name_attr.creation_time)
             # }
+            return {
+                "standard_information": {
+                    "creationTime": str(standard_information_attr.creation_time),
+                    "modifiedTime": str(standard_information_attr.last_modification_time),
+                    "mft-modifiedTime": str(standard_information_attr.last_change_time),
+                    "accessedTime": str(standard_information_attr.last_access_time)
+                },
+                "file_name": {
+                    "creationTime": str(file_name_attr.creation_time),
+                    "modifiedTime": str(file_name_attr.last_modification_time),
+                    "mft-modifiedTime": str(file_name_attr.last_change_time),
+                    "accessedTime": str(file_name_attr.last_access_time)
+                }
+            }
 
     def get_allocated_fragments_for_file(self, path: Path) -> List[Tuple[int, int]]:
         with self._volume.get_filesystem() as fs:
